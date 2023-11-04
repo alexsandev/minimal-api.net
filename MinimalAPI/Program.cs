@@ -1,4 +1,5 @@
-using Dapper.Contrib.Extensions;
+using MinimalAPI.Model.Resources;
+using MinimalAPI.Model.Services;
 
 namespace MinimalAPI
 {
@@ -6,8 +7,6 @@ namespace MinimalAPI
     {
         public static void Main(string[] args)
         {
-            var connection = Database.GetConnection();
-
             var builder = WebApplication.CreateBuilder(args);
 
             //Habilitando o swagger
@@ -18,33 +17,25 @@ namespace MinimalAPI
 
             app.MapGet("/", () => "API inicializada");
 
-            app.MapGet("/users", () => {
-                return connection.GetAll<User>().ToList();
-            });
+            try
+            {
+                UserResource resources = new UserResource(new UserService());
 
-            app.MapGet("/users/{id}", (int id) => {
-                return connection.Get<User>(id);
-            });
+                app.MapGet("/users", resources.FindAll);
 
-            app.MapPost("/users/create", (User user) => {
-                connection.Insert(user);
-            });
+                app.MapGet("/users/{id}", resources.FindById);
 
-            app.MapPut("/users/update/{id}", (int id, User obj) => {
-                User user = connection.Get<User>(id);
-                if(user != null)
-                {
-                    user.Name = obj.Name;
-                    user.Email = obj.Email;
-                    user.Password = obj.Password;
-                    connection.Update(user);
-                }
-            });
+                app.MapPost("/users/create", resources.Create);
 
-            app.MapDelete("/users/delete/{id}", (int id) => {
-                connection.Delete(new User(id, null, null, null));
-            });
+                app.MapPut("/users/update", resources.Update);
 
+                app.MapDelete("/users/delete/{id}", resources.DeleteById);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            
             app.UseSwagger();// Ativando o Swagger
 
             app.UseSwaggerUI();// Ativando a interface Swagger
